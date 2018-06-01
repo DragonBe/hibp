@@ -3,10 +3,12 @@ declare(strict_types=1);
 
 namespace Dragonbe\Test\Hibp;
 
-
+use Dragonbe\Hibp\Hibp;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
 
@@ -16,14 +18,21 @@ class HibpTest extends TestCase
      * Testing that an exception is thrown when the HIBP service
      * is unreachable.
      *
-     * @covers ::__construct()
-     * @covers ::isPwndPassword()
+     * @covers \DragonBe\Hibp\Hibp::__construct()
+     * @covers \DragonBe\Hibp\Hibp::isPwnedPassword()
      */
     public function testExceptionIsThrownWhenServiceNotAvailable()
     {
+        $mockHandler = new MockHandler([
+            new ConnectException("Error Communicating with Server", new Request('GET', 'test'))
+        ]);
+        $handlerStack = HandlerStack::create($mockHandler);
+        $client = new Client(['handler' => $handlerStack]);
+
         $this->expectException(\RuntimeException::class);
-        $hibp = new Hibp();
-        $hibp->isPwndPassword('foo');
+        $this->expectExceptionMessage('Cannot connect to HIBP API');
+        $hibp = new Hibp($client);
+        $hibp->isPwnedPassword('foo');
         $this->fail('Expected exception was not thrown');
     }
 
@@ -40,9 +49,9 @@ class HibpTest extends TestCase
     public function pwnedCommonPasswordProvider(): array
     {
         return [
-            ['password'],
-            ['querty'],
-            ['admin'],
+            ['password', 'pwned1_password.txt'],
+            ['querty', 'pwned2_password.txt'],
+            ['admin', 'pwned3_password.txt'],
         ];
     }
 
@@ -55,9 +64,9 @@ class HibpTest extends TestCase
     public function strongUniquePasswordProvider(): array
     {
         return [
-            ['kjxkL[GkevdAXWiUXUarJgwFtdrcYiLfmeWKGcDwdwTNZHNTE8uHjAuYXNckZaMK'],
-            ['revelry castor whipsaw thistle'],
-            ['B8V6EDFpyz$p]fq3T9vJ'],
+            ['kjxkL[GkevdAXWiUXUarJgwFtdrcYiLfmeWKGcDwdwTNZHNTE8uHjAuYXNckZaMK', 'new1_password.txt'],
+            ['revelry castor whipsaw thistle', 'new2_password.txt'],
+            ['B8V6EDFpyz$p]fq3T9vJ', 'new3_password.txt'],
         ];
     }
 
@@ -65,15 +74,16 @@ class HibpTest extends TestCase
      * Tests that a common password is found in HIBP service
      *
      * @param string $plainTextPassword
+     * @param string $passwordFile
      *
-     * @covers ::__construct()
-     * @covers ::isPwndPassword()
+     * @covers \DragonBe\Hibp\Hibp::__construct()
+     * @covers \DragonBe\Hibp\Hibp::isPwnedPassword()
      *
      * @dataProvider pwnedCommonPasswordProvider
      */
-    public function testCanFindPwnedPasswordInPlainText(string $plainTextPassword)
+    public function testCanFindPwnedPasswordInPlainText(string $plainTextPassword, string $passwordFile)
     {
-        $client = $this->mockClientResponse(__DIR__ . '/_files/pwned_password.txt');
+        $client = $this->mockClientResponse(__DIR__ . '/_files/' . $passwordFile);
         $hibp = new Hibp($client);
         $resultSet = $hibp->isPwnedPassword($plainTextPassword);
         $this->assertTrue($resultSet);
@@ -83,17 +93,18 @@ class HibpTest extends TestCase
      * Tests that a common password is found in HIBP service
      *
      * @param string $plainTextPassword
+     * @param string $passwordFile
      *
-     * @covers ::__construct()
-     * @covers ::isPwndPassword()
+     * @covers \DragonBe\Hibp\Hibp::__construct()
+     * @covers \DragonBe\Hibp\Hibp::isPwnedPassword()
      *
      * @dataProvider pwnedCommonPasswordProvider
      */
-    public function testCanFindPwndPasswordAsSha1Hash(string $plainTextPassword)
+    public function testCanFindPwndPasswordAsSha1Hash(string $plainTextPassword, string $passwordFile)
     {
-        $client = $this->mockClientResponse(__DIR__ . '/_files/pwned_password.txt');
+        $client = $this->mockClientResponse(__DIR__ . '/_files/' . $passwordFile);
         $hibp = new Hibp($client);
-        $sha1Password = sha1($plainTextPassword, true);
+        $sha1Password = sha1($plainTextPassword);
         $resultSet = $hibp->isPwnedPassword($sha1Password, true);
         $this->assertTrue($resultSet);
     }
@@ -103,15 +114,16 @@ class HibpTest extends TestCase
      * in HIBP service
      *
      * @param string $strongPassword
+     * @param string $passwordFile
      *
-     * @covers ::__construct()
-     * @covers ::isPwndPassword()
+     * @covers \DragonBe\Hibp\Hibp::__construct()
+     * @covers \DragonBe\Hibp\Hibp::isPwnedPassword()
      *
      * @dataProvider strongUniquePasswordProvider
      */
-    public function testCanNotFindGoodPasswordInPlainText(string $strongPassword)
+    public function testCanNotFindGoodPasswordInPlainText(string $strongPassword, string $passwordFile)
     {
-        $client = $this->mockClientResponse(__DIR__ . '/_files/new_password.txt');
+        $client = $this->mockClientResponse(__DIR__ . '/_files/' . $passwordFile);
         $hibp = new Hibp($client);
         $resultSet = $hibp->isPwnedPassword($strongPassword);
         $this->assertFalse($resultSet);
@@ -122,15 +134,18 @@ class HibpTest extends TestCase
      * in HIBP service
      *
      * @param string $strongPassword
-     * @covers ::__construct()
-     * @covers ::isPwndPassword()
+     * @param string $passwordFile
+     *
+     * @covers \DragonBe\Hibp\Hibp::__construct()
+     * @covers \DragonBe\Hibp\Hibp::isPwnedPassword()
+     *
      * @dataProvider strongUniquePasswordProvider
      */
-    public function testCanNotFindGoodPasswordAsSha1Hash(string $strongPassword)
+    public function testCanNotFindGoodPasswordAsSha1Hash(string $strongPassword, string $passwordFile)
     {
-        $client = $this->mockClientResponse(__DIR__ . '/_files/new_password.txt');
+        $client = $this->mockClientResponse(__DIR__ . '/_files/' . $passwordFile);
         $hibp = new Hibp($client);
-        $sha1Password = sha1($strongPassword, true);
+        $sha1Password = sha1($strongPassword);
         $resultSet = $hibp->isPwnedPassword($sha1Password, true);
         $this->assertFalse($resultSet);
     }
@@ -157,7 +172,8 @@ class HibpTest extends TestCase
         $breakCnt = 0;
 
         $stream = file_get_contents($serverResponseFile);
-        $data = explode("\r\n", $stream);
+        $stream = str_replace("\r\n", "\n", $stream);
+        $data = explode("\n", $stream);
 
         foreach ($data as $line) {
             $cleanLine = rtrim($line);
