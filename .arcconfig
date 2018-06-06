@@ -1,3 +1,6 @@
 {
-  "phabricator.uri" : "https://phabricator.in2it.be/"
+  "phabricator.uri" : "https://phabricator.in2it.be/",
+  "unit.engine": "PhpunitTestEngine",
+  "unit.phpunit.binary": "./vendor/bin/phpunit",
+  "phpunit_config": "phpunit.xml"
 }

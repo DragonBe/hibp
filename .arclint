@@ -1,0 +1,28 @@
+{
+  "linters": {
+    "php": {
+      "type": "php",
+      "include": "(\\.php$)",
+      "exclude": "(^vendor/)"
+    },
+    "phpcs": {
+      "type": "phpcs",
+      "bin": "./vendor/bin/phpcs"
+    },
+    "json": {
+      "type": "json",
+      "include": "(\\.json$)"
+    },
+    "composer": {
+      "type": "composer"
+    },
+    "jshint": {
+      "type": "jshint",
+      "include": "(\\.js$)"
+    },
+    "xml": {
+      "type": "xml",
+      "include": "(\\.xml$)"
+    }
+  }
+}
