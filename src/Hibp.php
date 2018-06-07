@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 namespace Dragonbe\Hibp;
 
-
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ConnectException;
 
 class Hibp
@@ -13,6 +13,7 @@ class Hibp
     const HIBP_API_TIMEOUT = 300;
     const HIBP_CLIENT_UA = 'DragonBe\Hibp-0.0.1RC1 Composer\1.6.4 PHP\7.2';
     const HIBP_CLIENT_ACCEPT = 'application/vnd.haveibeenpwned.v2+json';
+    const HIBP_RANGE_LENGTH = 5;
 
     /**
      * @var Client
@@ -43,21 +44,32 @@ class Hibp
      */
     public function isPwnedPassword(string $password, $isShaHash = false): bool
     {
-        if (!$isShaHash) {
+        if (! $isShaHash) {
             $password = sha1($password);
         }
         $password = strtoupper($password);
-        $range = substr($password, 0, 5);
+        $range = $this->getHashRange($password);
         try {
             $response = $this->client->get('/range/' . $range);
         } catch (ConnectException $connectException) {
             throw $this->exception(\RuntimeException::class, 'Cannot connect to HIBP API');
-        }
-        if (200 !== $response->getStatusCode()) {
-            throw $this->exception(\InvalidArgumentException::class, 'A problem occurred calling the HIBP service');
+        } catch (ClientException $clientException) {
+            throw $this->exception(\DomainException::class, $clientException->getMessage());
         }
         $resultStream = (string) $response->getBody();
         return $this->passwordInResponse($password, $resultStream);
+    }
+
+    /**
+     * Creates a hash range that will be send to HIBP API
+     *
+     * @param string $passwordHash
+     * @return string
+     */
+    private function getHashRange(string $passwordHash): string
+    {
+        $range = substr($passwordHash, 0, self::HIBP_RANGE_LENGTH);
+        return $range;
     }
 
     /**
@@ -67,7 +79,7 @@ class Hibp
      * @param string $resultStream
      * @return bool
      */
-    protected function passwordInResponse(string $password, string $resultStream): bool
+    private function passwordInResponse(string $password, string $resultStream): bool
     {
         $data = explode("\r\n", $resultStream);
         $hashes = array_filter($data, function ($value) use ($password) {

@@ -1,0 +1,5 @@
+GET https://api.pwnedpasswords.com/range/071CD
+
+HTTP/1.1 429
+Retry-After: 2
+Rate limit exceeded, refer to acceptable use of the API: https://haveibeenpwned.com/API/v2#AcceptableUse

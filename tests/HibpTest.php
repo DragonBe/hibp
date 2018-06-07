@@ -20,6 +20,7 @@ class HibpTest extends TestCase
      *
      * @covers \DragonBe\Hibp\Hibp::__construct()
      * @covers \DragonBe\Hibp\Hibp::isPwnedPassword()
+     * @covers \Dragonbe\Hibp\Hibp::exception()
      */
     public function testExceptionIsThrownWhenServiceNotAvailable()
     {
@@ -36,9 +37,42 @@ class HibpTest extends TestCase
         $this->fail('Expected exception was not thrown');
     }
 
+    /**
+     * Testing hitting the rate limit of HIBP API
+     *
+     * @covers \Dragonbe\Hibp\Hibp::__construct()
+     * @covers \Dragonbe\Hibp\Hibp::isPwnedPassword()
+     * @covers \Dragonbe\Hibp\Hibp::getHashRange()
+     * @covers \Dragonbe\Hibp\Hibp::exception()
+     */
     public function testExceptionIsThrownWhenRateLimitIsReached()
     {
-        $this->markTestIncomplete('Not yet implemented');
+        $passwordFile = 'hit_rate_limit.txt';
+        $password = 'password';
+        $client = $this->mockClientResponse(__DIR__ . '/_files/' . $passwordFile);
+        $hibp = new Hibp($client);
+        $this->expectException(\DomainException::class);
+        $hibp->isPwnedPassword($password);
+        $this->fail('Expected exception for hit rate was not triggered');
+    }
+
+    /**
+     * Testing hitting a 404 when looking up a password
+     *
+     * @covers \Dragonbe\Hibp\Hibp::__construct()
+     * @covers \Dragonbe\Hibp\Hibp::isPwnedPassword()
+     * @covers \Dragonbe\Hibp\Hibp::getHashRange()
+     * @covers \Dragonbe\Hibp\Hibp::exception()
+     */
+    public function testExceptionIsThrownWhenApiNotFound()
+    {
+        $passwordFile = 'not_found.txt';
+        $password = 'password';
+        $client = $this->mockClientResponse(__DIR__ . '/_files/' . $passwordFile);
+        $hibp = new Hibp($client);
+        $this->expectException(\DomainException::class);
+        $hibp->isPwnedPassword($password);
+        $this->fail('Expected exception for hit rate was not triggered');
     }
 
     /**
@@ -71,6 +105,29 @@ class HibpTest extends TestCase
     }
 
     /**
+     * Testing that we receive a password hash range of type string
+     *
+     * @throws \ReflectionException
+     *
+     * @covers \Dragonbe\Hibp\Hibp::getHashRange()
+     */
+    public function testPasswordHashRangeReturnsString()
+    {
+        $getHashRange = new \ReflectionMethod(Hibp::class, 'getHashRange');
+        $getHashRange->setAccessible(true);
+
+        $password = 'foobar';
+        $hash = sha1($password);
+        $range = $getHashRange->invokeArgs(new Hibp(), [$hash]);
+        $this->assertTrue(is_string($range));
+        $this->assertSame(Hibp::HIBP_RANGE_LENGTH, strlen($range));
+        $this->assertSame(
+            substr($hash, 0, Hibp::HIBP_RANGE_LENGTH),
+            $range
+        );
+    }
+
+    /**
      * Tests that a common password is found in HIBP service
      *
      * @param string $plainTextPassword
@@ -78,6 +135,8 @@ class HibpTest extends TestCase
      *
      * @covers \DragonBe\Hibp\Hibp::__construct()
      * @covers \DragonBe\Hibp\Hibp::isPwnedPassword()
+     * @covers \Dragonbe\Hibp\Hibp::getHashRange()
+     * @covers \Dragonbe\Hibp\Hibp::passwordInResponse()
      *
      * @dataProvider pwnedCommonPasswordProvider
      */
@@ -97,6 +156,8 @@ class HibpTest extends TestCase
      *
      * @covers \DragonBe\Hibp\Hibp::__construct()
      * @covers \DragonBe\Hibp\Hibp::isPwnedPassword()
+     * @covers \Dragonbe\Hibp\Hibp::getHashRange()
+     * @covers \Dragonbe\Hibp\Hibp::passwordInResponse()
      *
      * @dataProvider pwnedCommonPasswordProvider
      */
@@ -118,6 +179,8 @@ class HibpTest extends TestCase
      *
      * @covers \DragonBe\Hibp\Hibp::__construct()
      * @covers \DragonBe\Hibp\Hibp::isPwnedPassword()
+     * @covers \Dragonbe\Hibp\Hibp::getHashRange()
+     * @covers \Dragonbe\Hibp\Hibp::passwordInResponse()
      *
      * @dataProvider strongUniquePasswordProvider
      */
@@ -138,6 +201,8 @@ class HibpTest extends TestCase
      *
      * @covers \DragonBe\Hibp\Hibp::__construct()
      * @covers \DragonBe\Hibp\Hibp::isPwnedPassword()
+     * @covers \Dragonbe\Hibp\Hibp::getHashRange()
+     * @covers \Dragonbe\Hibp\Hibp::passwordInResponse()
      *
      * @dataProvider strongUniquePasswordProvider
      */
@@ -150,12 +215,38 @@ class HibpTest extends TestCase
         $this->assertFalse($resultSet);
     }
 
+    /**
+     * Testing that by default this library uses the Guzzle Http
+     * client.
+     *
+     * @throws \ReflectionException
+     *
+     * @covers \Dragonbe\Hibp\Hibp::__construct()
+     * @covers \Dragonbe\Hibp\Hibp::createClient()
+     */
+    public function testGuzzleClientIsUsedWhenNoClientIsProvided()
+    {
+        $hibp = new \ReflectionClass(Hibp::class);
+        $clientProperty = $hibp->getProperty('client');
+        $clientProperty->setAccessible(true);
+        $client = $clientProperty->getValue(new Hibp());
+
+        $this->assertInstanceOf(Client::class, $client);
+    }
+
+    /**
+     * Creates a mock response for GuzzleHttp Client and returns
+     * the Client object.
+     *
+     * @param string $serverResponseFile
+     * @return Client
+     */
     private function mockClientResponse(string $serverResponseFile): Client
     {
         $statusCode = $this->getStreamStatusCode($serverResponseFile);
         $headers = $this->getStreamHeaders($serverResponseFile);
         $body = $this->getStreamBody($serverResponseFile);
-        
+
         $mockHandler = new MockHandler([
            new Response($statusCode, $headers, $body),
         ]);
@@ -164,6 +255,12 @@ class HibpTest extends TestCase
         return $client;
     }
 
+    /**
+     * Generic method to process response fixtures
+     *
+     * @param string $serverResponseFile
+     * @return array
+     */
     private function getStream(string $serverResponseFile): array
     {
         $request = [];
@@ -201,24 +298,48 @@ class HibpTest extends TestCase
         return $response;
     }
 
+    /**
+     * Returns the request stream from a fixture
+     *
+     * @param string $serverResponseFile
+     * @return string
+     */
     private function getStreamRequest(string $serverResponseFile): string
     {
         $data = $this->getStream($serverResponseFile);
         return $data['request'];
     }
 
+    /**
+     * Returns the status code form a fixture
+     *
+     * @param string $serverResponseFile
+     * @return int
+     */
     private function getStreamStatusCode(string $serverResponseFile): int
     {
         $data = $this->getStream($serverResponseFile);
         return $data['statuscode'];
     }
 
+    /**
+     * Returns headers from a fixture
+     *
+     * @param string $serverResponseFile
+     * @return array
+     */
     private function getStreamHeaders(string $serverResponseFile): array
     {
         $data = $this->getStream($serverResponseFile);
         return $data['headers'];
     }
 
+    /**
+     * Returns the body of a fixture
+     *
+     * @param string $serverResponseFile
+     * @return string
+     */
     private function getStreamBody(string $serverResponseFile): string
     {
         $data = $this->getStream($serverResponseFile);
