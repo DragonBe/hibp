@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace Dragonbe\Hibp;
 
-use GuzzleHttp\Client;
+use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ConnectException;
 
-class Hibp
+class Hibp implements \Countable
 {
     const HIBP_API_URI = 'https://api.pwnedpasswords.com';
     const HIBP_API_TIMEOUT = 300;
@@ -16,22 +16,23 @@ class Hibp
     const HIBP_RANGE_LENGTH = 5;
 
     /**
-     * @var Client
+     * @var ClientInterface
      */
     protected $client;
 
     /**
+     * @var int
+     */
+    protected $count = 0;
+
+    /**
      * Hibp constructor.
      *
-     * @param Client $client
+     * @param ClientInterface $client
      */
-    public function __construct(?Client $client = null)
+    public function __construct(ClientInterface $client)
     {
-        if (null !== $client) {
-            $this->client = $client;
-        } else {
-            $this->client = $this->createClient();
-        }
+        $this->client = $client;
     }
 
     /**
@@ -61,6 +62,14 @@ class Hibp
     }
 
     /**
+     * @inheritdoc
+     */
+    public function count(): int
+    {
+        return $this->count;
+    }
+
+    /**
      * Creates a hash range that will be send to HIBP API
      *
      * @param string $passwordHash
@@ -82,33 +91,17 @@ class Hibp
     private function passwordInResponse(string $password, string $resultStream): bool
     {
         $data = explode("\r\n", $resultStream);
-        $hashes = array_filter($data, function ($value) use ($password) {
+        $totalCount = 0;
+        $hashes = array_filter($data, function ($value) use ($password, &$totalCount) {
             list($hash, $count) = explode(':', $value);
+            $totalCount += $count;
             return (0 === strcmp($hash, substr($password, 5)));
         });
         if ([] === $hashes) {
             return false;
         }
+        $this->count = $totalCount;
         return true;
-    }
-
-    /**
-     * Creates a Guzzle HTTP client consuming the
-     * HIBP API
-     *
-     * @return Client
-     */
-    private function createClient(): Client
-    {
-        $client = new Client([
-            'base_uri' => self::HIBP_API_URI,
-            'timeout' => self::HIBP_API_TIMEOUT,
-            'headers' => [
-                'User-Agent' => self::HIBP_CLIENT_UA,
-                'Accept' => self::HIBP_CLIENT_ACCEPT,
-            ]
-        ]);
-        return $client;
     }
 
     /**

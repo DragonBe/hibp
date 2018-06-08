@@ -4,7 +4,9 @@ declare(strict_types=1);
 namespace Dragonbe\Test\Hibp;
 
 use Dragonbe\Hibp\Hibp;
+use Dragonbe\Hibp\HibpFactory;
 use GuzzleHttp\Client;
+use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -14,6 +16,33 @@ use PHPUnit\Framework\TestCase;
 
 class HibpTest extends TestCase
 {
+    /**
+     * Testing that we need to provide a client at construct or throw
+     * a ArgumentCountError exception
+     *
+     * @covers \Dragonbe\Hibp\Hibp::__construct
+     */
+    public function testClassThrowsErrorWhenHttpClientIsNotProvided()
+    {
+        $this->expectException(\ArgumentCountError::class);
+        $hibp = new Hibp();
+        $this->fail('Expected error for missing HTTP client was not thrown');
+    }
+
+    /**
+     * Testing that we need to provide a GuzzleHttp client at construct
+     * or throw a TypeError exception
+     *
+     * @covers \Dragonbe\Hibp\Hibp::__construct
+     */
+    public function testClassThrowsTypeErrorWhenWrongArgumentIsProvided()
+    {
+        $foo = new \stdClass();
+        $this->expectException(\TypeError::class);
+        $hibp = new Hibp($foo);
+        $this->fail('Expected error for wrong HTTP client was not thrown');
+    }
+
     /**
      * Testing that an exception is thrown when the HIBP service
      * is unreachable.
@@ -49,8 +78,7 @@ class HibpTest extends TestCase
     {
         $passwordFile = 'hit_rate_limit.txt';
         $password = 'password';
-        $client = $this->mockClientResponse(__DIR__ . '/_files/' . $passwordFile);
-        $hibp = new Hibp($client);
+        $hibp = $this->createHibpWithMockedClientResponse(__DIR__ . '/_files/' . $passwordFile);
         $this->expectException(\DomainException::class);
         $hibp->isPwnedPassword($password);
         $this->fail('Expected exception for hit rate was not triggered');
@@ -68,8 +96,7 @@ class HibpTest extends TestCase
     {
         $passwordFile = 'not_found.txt';
         $password = 'password';
-        $client = $this->mockClientResponse(__DIR__ . '/_files/' . $passwordFile);
-        $hibp = new Hibp($client);
+        $hibp = $this->createHibpWithMockedClientResponse(__DIR__ . '/_files/' . $passwordFile);
         $this->expectException(\DomainException::class);
         $hibp->isPwnedPassword($password);
         $this->fail('Expected exception for hit rate was not triggered');
@@ -83,9 +110,9 @@ class HibpTest extends TestCase
     public function pwnedCommonPasswordProvider(): array
     {
         return [
-            ['password', 'pwned1_password.txt'],
-            ['querty', 'pwned2_password.txt'],
-            ['admin', 'pwned3_password.txt'],
+            ['password', 'pwned1_password.txt', 3311463],
+            ['querty', 'pwned2_password.txt', 3418],
+            ['admin', 'pwned3_password.txt', 43771],
         ];
     }
 
@@ -116,9 +143,12 @@ class HibpTest extends TestCase
         $getHashRange = new \ReflectionMethod(Hibp::class, 'getHashRange');
         $getHashRange->setAccessible(true);
 
+        $client = $this->getMockBuilder(ClientInterface::class)
+            ->getMockForAbstractClass();
+
         $password = 'foobar';
         $hash = sha1($password);
-        $range = $getHashRange->invokeArgs(new Hibp(), [$hash]);
+        $range = $getHashRange->invokeArgs(new Hibp($client), [$hash]);
         $this->assertTrue(is_string($range));
         $this->assertSame(Hibp::HIBP_RANGE_LENGTH, strlen($range));
         $this->assertSame(
@@ -142,10 +172,32 @@ class HibpTest extends TestCase
      */
     public function testCanFindPwnedPasswordInPlainText(string $plainTextPassword, string $passwordFile)
     {
-        $client = $this->mockClientResponse(__DIR__ . '/_files/' . $passwordFile);
-        $hibp = new Hibp($client);
+        $hibp = $this->createHibpWithMockedClientResponse(__DIR__ . '/_files/' . $passwordFile);
         $resultSet = $hibp->isPwnedPassword($plainTextPassword);
         $this->assertTrue($resultSet);
+    }
+
+    /**
+     * Testing to see that we can count how many times a password was used
+     *
+     * @param Hibp $hibp
+     *
+     * @covers \DragonBe\Hibp\Hibp::__construct()
+     * @covers \DragonBe\Hibp\Hibp::isPwnedPassword()
+     * @covers \Dragonbe\Hibp\Hibp::getHashRange()
+     * @covers \Dragonbe\Hibp\Hibp::passwordInResponse()
+     * @covers \Dragonbe\Hibp\Hibp::count()
+     *
+     * @dataProvider pwnedCommonPasswordProvider
+     */
+    public function testWhenBadPasswordIsFoundWeCanCountHowManyTimesItWasUsed(
+        string $plainTextPassword,
+        string $passwordFile,
+        int $count
+    ) {
+        $hibp = $this->createHibpWithMockedClientResponse(__DIR__ . '/_files/' . $passwordFile);
+        $hibp->isPwnedPassword($plainTextPassword);
+        $this->assertCount($count, $hibp);
     }
 
     /**
@@ -163,11 +215,31 @@ class HibpTest extends TestCase
      */
     public function testCanFindPwndPasswordAsSha1Hash(string $plainTextPassword, string $passwordFile)
     {
-        $client = $this->mockClientResponse(__DIR__ . '/_files/' . $passwordFile);
-        $hibp = new Hibp($client);
+        $hibp = $this->createHibpWithMockedClientResponse(__DIR__ . '/_files/' . $passwordFile);
         $sha1Password = sha1($plainTextPassword);
         $resultSet = $hibp->isPwnedPassword($sha1Password, true);
         $this->assertTrue($resultSet);
+    }
+
+    /**
+     * Tests that a common password is found in HIBP service
+     *
+     * @param string $plainTextPassword
+     * @param string $passwordFile
+     *
+     * @covers \DragonBe\Hibp\Hibp::__construct()
+     * @covers \DragonBe\Hibp\Hibp::isPwnedPassword()
+     * @covers \Dragonbe\Hibp\Hibp::getHashRange()
+     * @covers \Dragonbe\Hibp\Hibp::passwordInResponse()
+     * @covers \Dragonbe\Hibp\Hibp::count()
+     *
+     * @dataProvider strongUniquePasswordProvider
+     */
+    public function testCountIsZeroForStrongPasswords(string $plainTextPassword, string $passwordFile)
+    {
+        $hibp = $this->createHibpWithMockedClientResponse(__DIR__ . '/_files/' . $passwordFile);
+        $hibp->isPwnedPassword($plainTextPassword);
+        $this->assertCount(0, $hibp);
     }
 
     /**
@@ -186,8 +258,7 @@ class HibpTest extends TestCase
      */
     public function testCanNotFindGoodPasswordInPlainText(string $strongPassword, string $passwordFile)
     {
-        $client = $this->mockClientResponse(__DIR__ . '/_files/' . $passwordFile);
-        $hibp = new Hibp($client);
+        $hibp = $this->createHibpWithMockedClientResponse(__DIR__ . '/_files/' . $passwordFile);
         $resultSet = $hibp->isPwnedPassword($strongPassword);
         $this->assertFalse($resultSet);
     }
@@ -208,51 +279,28 @@ class HibpTest extends TestCase
      */
     public function testCanNotFindGoodPasswordAsSha1Hash(string $strongPassword, string $passwordFile)
     {
-        $client = $this->mockClientResponse(__DIR__ . '/_files/' . $passwordFile);
-        $hibp = new Hibp($client);
+        $hibp = $this->createHibpWithMockedClientResponse(__DIR__ . '/_files/' . $passwordFile);
         $sha1Password = sha1($strongPassword);
         $resultSet = $hibp->isPwnedPassword($sha1Password, true);
         $this->assertFalse($resultSet);
     }
 
     /**
-     * Testing that by default this library uses the Guzzle Http
-     * client.
-     *
-     * @throws \ReflectionException
-     *
-     * @covers \Dragonbe\Hibp\Hibp::__construct()
-     * @covers \Dragonbe\Hibp\Hibp::createClient()
-     */
-    public function testGuzzleClientIsUsedWhenNoClientIsProvided()
-    {
-        $hibp = new \ReflectionClass(Hibp::class);
-        $clientProperty = $hibp->getProperty('client');
-        $clientProperty->setAccessible(true);
-        $client = $clientProperty->getValue(new Hibp());
-
-        $this->assertInstanceOf(Client::class, $client);
-    }
-
-    /**
-     * Creates a mock response for GuzzleHttp Client and returns
-     * the Client object.
+     * Creates a mock response for GuzzleHttp Client and creates
+     * a Hibp instance with these mocked responses.
      *
      * @param string $serverResponseFile
-     * @return Client
+     * @return Hibp
      */
-    private function mockClientResponse(string $serverResponseFile): Client
+    private function createHibpWithMockedClientResponse(string $serverResponseFile): Hibp
     {
         $statusCode = $this->getStreamStatusCode($serverResponseFile);
         $headers = $this->getStreamHeaders($serverResponseFile);
         $body = $this->getStreamBody($serverResponseFile);
 
-        $mockHandler = new MockHandler([
-           new Response($statusCode, $headers, $body),
+        return HibpFactory::createTestClient([
+            new Response($statusCode, $headers, $body),
         ]);
-        $handlerStack = HandlerStack::create($mockHandler);
-        $client = new Client(['handler' => $handlerStack]);
-        return $client;
     }
 
     /**
