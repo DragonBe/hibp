@@ -1,7 +1,8 @@
 [![PHP 7.2+](https://img.shields.io/packagist/php-v/dragonbe/hibp.svg)](https://secure.php.net/downloads.php)
 [![Packagist version](https://img.shields.io/packagist/v/dragonbe/hibp.svg)](https://packagist.org/packages/dragonbe/hibp)
 [![Packagist daily downloads](https://img.shields.io/packagist/dt/dragonbe/hibp.svg)](https://packagist.org/packages/dragonbe/hibp)
-[![Infection MSI](https://badge.stryker-mutator.io/github.com/dragonbe/hibp/master)](https://github.com/dragonbe/hibp)
+[![CircleCI status](https://img.shields.io/circleci/project/github/DragonBe/hibp.svg)](https://circleci.com/gh/DragonBe/hibp)
+[![Infection MSI](https://badge.stryker-mutator.io/github.com/DragonBe/hibp/master)](https://github.com/DragonBe/hibp)
 
 # Have I been pwned Composer package
 
