@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<phpunit
+    colors="true"
+    bootstrap="vendor/autoload.php"
+    stopOnError="true"
+    stopOnFailure="true">
+
+    <testsuites>
+        <testsuite name="HaveIBeenPwned Package Tests">
+            <directory suffix="php">tests/</directory>
+        </testsuite>
+    </testsuites>
+
+    <filter>
+        <whitelist>
+            <directory suffix="php">src/</directory>
+        </whitelist>
+    </filter>
+
+    <logging>
+        <log type="coverage-html" target="build/coverage" lowUpperBound="75" highLowerBound="95"/>
+        <log type="coverage-xml" target="./build/logs/coverage/coverage-xml" lowUpperBound="75" highLowerBound="95"/>
+        <log type="coverage-clover" target="build/logs/coverage.xml"/>
+        <log type="junit" target="build/logs/logfile.xml"/>
+        <log type="testdox-html" target="build/logs/testdox.html"/>
+        <log type="testdox-text" target="build/logs/testdox.txt"/>
+    </logging>
+
+</phpunit>
