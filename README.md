@@ -1,3 +1,8 @@
+[![PHP 7.2+](https://img.shields.io/packagist/php-v/dragonbe/hibp.svg)](https://secure.php.net/downloads.php)
+[![Packagist version](https://img.shields.io/packagist/v/dragonbe/hibp.svg)](https://packagist.org/packages/dragonbe/hibp)
+[![Packagist daily downloads](https://img.shields.io/packagist/dt/dragonbe/hibp.svg)](https://packagist.org/packages/dragonbe/hibp)
+[![Infection MSI](https://badge.stryker-mutator.io/github.com/dragonbe/hibp/master)](https://github.com/dragonbe/hibp)
+
 # Have I been pwned Composer package
 
 To increse security of users on your system, I started building a client for [@TroyHunt](https://twitter.com/troyhunt)'s [Have I Been Pwned?](https://haveibeenpwned.com/) API v2 that will check if a given password was already used in a breach. Many thanks to Mr. Troy Hunt for providing us this service.
