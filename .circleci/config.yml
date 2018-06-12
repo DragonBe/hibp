@@ -45,9 +45,8 @@ jobs:
           key: v1-dependencies-{{ checksum "composer.json" }}
         
       # run tests!
-      - run: cp phpunit.xml.dist phpunit.xml
       - run: cp phpcs.xml.dist phpcs.xml
-      - run: cp infection.json.dist infection.json
-      - run: ./vendor/bin/phpunit
+      - run: ./vendor/bin/phpunit --configuration=phpunit.xml.dist
       - run: ./vendor/bin/phpcs
-      - run: ./vendor/bin/infection
+      # For some reason infection is not executed correctly
+      #- run: ./vendor/bin/infection --configuration=infection.json
