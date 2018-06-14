@@ -94,8 +94,11 @@ class Hibp implements \Countable
         $totalCount = 0;
         $hashes = array_filter($data, function ($value) use ($password, &$totalCount) {
             list($hash, $count) = explode(':', $value);
-            $totalCount += $count;
-            return (0 === strcmp($hash, substr($password, 5)));
+            if (0 === strcmp($hash, substr($password, 5))) {
+                $totalCount = (int) $count;
+                return true;
+            }
+            return false;
         });
         if ([] === $hashes) {
             return false;
