@@ -43,7 +43,7 @@ class Hibp implements \Countable
      * @param bool $isShaHash
      * @return bool
      */
-    public function isPwnedPassword(string $password, $isShaHash = false): bool
+    public function isPwnedPassword(string $password, bool $isShaHash = false): bool
     {
         if (! $isShaHash) {
             $password = sha1($password);
