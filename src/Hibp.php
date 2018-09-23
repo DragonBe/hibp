@@ -14,6 +14,8 @@ class Hibp implements \Countable
     const HIBP_CLIENT_UA = 'DragonBe\Hibp-0.0.1RC1 Composer\1.6.4 PHP\7.2';
     const HIBP_CLIENT_ACCEPT = 'application/vnd.haveibeenpwned.v2+json';
     const HIBP_RANGE_LENGTH = 5;
+    const HIBP_RANGE_BASE = 0;
+    const HIBP_COUNT_BASE = 0;
 
     /**
      * @var ClientInterface
@@ -23,7 +25,7 @@ class Hibp implements \Countable
     /**
      * @var int
      */
-    protected $count = 0;
+    protected $count = self::HIBP_COUNT_BASE;
 
     /**
      * Hibp constructor.
@@ -77,7 +79,7 @@ class Hibp implements \Countable
      */
     private function getHashRange(string $passwordHash): string
     {
-        $range = substr($passwordHash, 0, self::HIBP_RANGE_LENGTH);
+        $range = substr($passwordHash, self::HIBP_RANGE_BASE, self::HIBP_RANGE_LENGTH);
         return $range;
     }
 
@@ -91,10 +93,10 @@ class Hibp implements \Countable
     private function passwordInResponse(string $password, string $resultStream): bool
     {
         $data = explode("\r\n", $resultStream);
-        $totalCount = 0;
+        $totalCount = self::HIBP_COUNT_BASE;
         $hashes = array_filter($data, function ($value) use ($password, &$totalCount) {
             list($hash, $count) = explode(':', $value);
-            if (0 === strcmp($hash, substr($password, 5))) {
+            if (0 === strcmp($hash, substr($password, self::HIBP_RANGE_LENGTH))) {
                 $totalCount = (int) $count;
                 return true;
             }
