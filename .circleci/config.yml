@@ -38,7 +38,13 @@ jobs:
           # fallback to using the latest cache if no exact match is found
           - v1-dependencies-
 
-      - run: composer install -n --prefer-dist
+      - run:
+          name: Installing Composer
+          command: composer install -n --prefer-dist
+
+      - run:
+          name: Create artifacts directory
+          command: mkdir -p build/logs/coverage/coverage-xml
 
       - save_cache:
           paths:
@@ -46,8 +52,29 @@ jobs:
           key: v1-dependencies-{{ checksum "composer.json" }}
         
       # run tests!
-      - run: cp phpcs.xml.dist phpcs.xml
-      - run: ./vendor/bin/phpunit --configuration=phpunit.xml.dist
-      - run: ./vendor/bin/phpcs
+      - run:
+          name: Create a CodeSniffer configuration file
+          command: cp phpcs.xml.dist phpcs.xml
+
+      - run:
+          name: Perform unit tests
+          command: ./vendor/bin/phpunit --configuration=phpunit.xml.dist
+
+      - store_test_results:
+          path: build/logs
+
+      - store_artifacts:
+          path: build/logs
+
+      - run:
+          name: Check coding standards
+          command: ./vendor/bin/phpcs
+
       # For some reason infection is not executed correctly
-      # - run: ./vendor/bin/infection --configuration=infection.json
+      - run:
+          name: Copying the junit files to coverage for Infection to run
+          command: cp build/logs/logfile.xml build/logs/coverage/phpunit.junit.xml
+
+      - run:
+          name: Execute mutation testing
+          command: ./vendor/bin/infection --configuration=infection.json.dist --coverage=build/logs/coverage
