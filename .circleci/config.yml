@@ -63,7 +63,7 @@ jobs:
       - store_test_results:
           path: ~/build/logs
 
-      - store_artefacts:
+      - store_artifacts:
           path: ~/build/logs
 
       - run:
