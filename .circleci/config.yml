@@ -7,8 +7,9 @@ jobs:
   build:
     docker:
       # specify the version you desire here
-      - image: circleci/php:7.2-zts-stretch-node-browsers
-      
+      # - image: circleci/php:7.2-zts-stretch-node-browsers
+      - image: circleci/php:7.3-zts-stretch-node-browsers
+
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
       # documented at https://circleci.com/docs/2.0/circleci-images/
@@ -49,4 +50,4 @@ jobs:
       - run: ./vendor/bin/phpunit --configuration=phpunit.xml.dist
       - run: ./vendor/bin/phpcs
       # For some reason infection is not executed correctly
-      #- run: ./vendor/bin/infection --configuration=infection.json
+      # - run: ./vendor/bin/infection --configuration=infection.json
