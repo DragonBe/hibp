@@ -6,7 +6,7 @@
 
 # Have I been pwned Composer package
 
-To increse security of users on your system, I started building a client for [@TroyHunt](https://twitter.com/troyhunt)'s [Have I Been Pwned?](https://haveibeenpwned.com/) API v2 that will check if a given password was already used in a breach. Many thanks to Mr. Troy Hunt for providing us this service.
+To increase security of users on your system, I started building a client for [@TroyHunt](https://twitter.com/troyhunt)'s [Have I Been Pwned?](https://haveibeenpwned.com/) API v2 that will check if a given password was already used in a breach. Many thanks to Mr. Troy Hunt for providing us this service.
 
 ## Project scope
 
