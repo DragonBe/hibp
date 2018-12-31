@@ -44,7 +44,7 @@ jobs:
 
       - run:
           name: Create artifacts directory
-          command: mkdir -p ~/build/logs/coverage/coverage-xml
+          command: mkdir -p build/logs/coverage/coverage-xml
 
       - save_cache:
           paths:
@@ -61,10 +61,10 @@ jobs:
           command: ./vendor/bin/phpunit --configuration=phpunit.xml.dist
 
       - store_test_results:
-          path: ~/build/logs
+          path: build/logs
 
       - store_artifacts:
-          path: ~/build/logs
+          path: build/logs
 
       - run:
           name: Check coding standards
@@ -73,4 +73,4 @@ jobs:
       # For some reason infection is not executed correctly
       - run:
           name: Execute mutation testing
-          command: ./vendor/bin/infection --configuration=infection.json.dist --coverage=~/build/logs/coverage/coverage-xml
+          command: ./vendor/bin/infection --configuration=infection.json.dist --coverage=build/logs/coverage/coverage-xml
