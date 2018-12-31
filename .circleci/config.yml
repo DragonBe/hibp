@@ -72,5 +72,9 @@ jobs:
 
       # For some reason infection is not executed correctly
       - run:
+          name: Copying the junit files to coverage for Infection to run
+          command: cp build/logs/logfile.xml build/logs/coverage/phpunit.junit.xml
+
+      - run:
           name: Execute mutation testing
-          command: ./vendor/bin/infection --configuration=infection.json.dist --coverage=build/logs/coverage/coverage-xml
+          command: ./vendor/bin/infection --configuration=infection.json.dist --coverage=build/logs/coverage
