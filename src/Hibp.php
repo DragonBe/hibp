@@ -3,11 +3,13 @@ declare(strict_types=1);
 
 namespace Dragonbe\Hibp;
 
-use GuzzleHttp\ClientInterface;
-use GuzzleHttp\Exception\ClientException;
-use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Psr7\Request;
+use Psr\Http\Client\ClientInterface;
+use Psr\Http\Client\ClientExceptionInterface;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 
-class Hibp implements \Countable
+class Hibp implements HibpInterface, \Countable
 {
     const HIBP_API_URI = 'https://api.pwnedpasswords.com';
     const HIBP_API_TIMEOUT = 300;
@@ -23,6 +25,16 @@ class Hibp implements \Countable
     protected $client;
 
     /**
+     * @var RequestInterface
+     */
+    protected $request;
+
+    /**
+     * @var ResponseInterface
+     */
+    protected $response;
+
+    /**
      * @var int
      */
     protected $count = self::HIBP_COUNT_BASE;
@@ -31,33 +43,41 @@ class Hibp implements \Countable
      * Hibp constructor.
      *
      * @param ClientInterface $client
+     * @param RequestInterface $request
+     * @param ResponseInterface $response
      */
-    public function __construct(ClientInterface $client)
-    {
+    public function __construct(
+        ClientInterface $client,
+        RequestInterface $request,
+        ResponseInterface $response
+    ) {
         $this->client = $client;
+        $this->request = $request;
+        $this->response = $response;
     }
 
     /**
-     * Checks a password against HIBP service and checks
-     * if the password is matching in the resultset
-     *
-     * @param string $password
-     * @param bool $isShaHash
-     * @return bool
+     * @inheritDoc
      */
     public function isPwnedPassword(string $password, bool $isShaHash = false): bool
     {
         if (! $isShaHash) {
             $password = sha1($password);
         }
+        if (40 !== strlen($password) && $isShaHash) {
+            throw new \InvalidArgumentException(
+                'Password does not appear to be a SHA1 hashed password, please verify your input'
+            );
+        }
         $password = strtoupper($password);
         $range = $this->getHashRange($password);
+
+        $request = new Request('GET', '/range/' . $range);
+
         try {
-            $response = $this->client->get('/range/' . $range);
-        } catch (ConnectException $connectException) {
+            $response = $this->client->sendRequest($request);
+        } catch (ClientExceptionInterface $connectException) {
             throw $this->exception(\RuntimeException::class, 'Cannot connect to HIBP API');
-        } catch (ClientException $clientException) {
-            throw $this->exception(\DomainException::class, $clientException->getMessage());
         }
         $resultStream = (string) $response->getBody();
         return $this->passwordInResponse($password, $resultStream);

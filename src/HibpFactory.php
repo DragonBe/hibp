@@ -3,9 +3,11 @@ declare(strict_types=1);
 
 namespace Dragonbe\Hibp;
 
-use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
+use RicardoFiorani\GuzzlePsr18Adapter\Client;
 
 class HibpFactory
 {
@@ -40,7 +42,16 @@ class HibpFactory
                 'Accept' => Hibp::HIBP_CLIENT_ACCEPT,
             ]
         ], $config));
-        return new Hibp($client);
+        $request = new Request(
+            'GET',
+            Hibp::HIBP_API_URI,
+            [
+                'User-Agent' => Hibp::HIBP_CLIENT_UA,
+                'Accept' => Hibp::HIBP_CLIENT_ACCEPT,
+            ]
+        );
+        $response = new Response();
+        return new Hibp($client, $request, $response);
     }
 
     /**
@@ -56,6 +67,15 @@ class HibpFactory
         $mock = new MockHandler($mockArray);
         $handler = HandlerStack::create($mock);
         $client = new Client(['handler' => $handler]);
-        return new Hibp($client);
+        $request = new Request(
+            'GET',
+            Hibp::HIBP_API_URI,
+            [
+                'User-Agent' => Hibp::HIBP_CLIENT_UA,
+                'Accept' => Hibp::HIBP_CLIENT_ACCEPT,
+            ]
+        );
+        $response = new Response();
+        return new Hibp($client, $request, $response);
     }
 }
