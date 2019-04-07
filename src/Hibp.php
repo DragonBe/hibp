@@ -18,6 +18,7 @@ class Hibp implements HibpInterface, \Countable
     const HIBP_RANGE_LENGTH = 5;
     const HIBP_RANGE_BASE = 0;
     const HIBP_COUNT_BASE = 0;
+    const SHA1_LENGTH = 40;
 
     /**
      * @var ClientInterface
@@ -64,7 +65,7 @@ class Hibp implements HibpInterface, \Countable
         if (! $isShaHash) {
             $password = sha1($password);
         }
-        if (40 !== strlen($password) && $isShaHash) {
+        if (self::SHA1_LENGTH !== strlen($password) && $isShaHash) {
             throw new \InvalidArgumentException(
                 'Password does not appear to be a SHA1 hashed password, please verify your input'
             );
@@ -72,7 +73,8 @@ class Hibp implements HibpInterface, \Countable
         $password = strtoupper($password);
         $range = $this->getHashRange($password);
 
-        $request = new Request('GET', '/range/' . $range);
+        $requestClass = get_class($this->request);
+        $request = new $requestClass('GET', '/range/' . $range);
 
         try {
             $response = $this->client->sendRequest($request);
