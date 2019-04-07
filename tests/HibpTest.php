@@ -5,14 +5,16 @@ namespace Dragonbe\Test\Hibp;
 
 use Dragonbe\Hibp\Hibp;
 use Dragonbe\Hibp\HibpFactory;
-use GuzzleHttp\Client;
-use GuzzleHttp\ClientInterface;
-use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Client\ClientInterface;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
+use RicardoFiorani\GuzzlePsr18Adapter\Client;
+use RicardoFiorani\GuzzlePsr18Adapter\Exception\ClientException;
 
 class HibpTest extends TestCase
 {
@@ -54,14 +56,20 @@ class HibpTest extends TestCase
     public function testExceptionIsThrownWhenServiceNotAvailable()
     {
         $mockHandler = new MockHandler([
-            new ConnectException("Error Communicating with Server", new Request('GET', 'test'))
+            new ClientException(
+                'Error Communicating with Server',
+                new Request('GET', 'test'),
+                new Response()
+            )
         ]);
         $handlerStack = HandlerStack::create($mockHandler);
         $client = new Client(['handler' => $handlerStack]);
+        $request = new Request('GET', 'test');
+        $response = new Response();
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Cannot connect to HIBP API');
-        $hibp = new Hibp($client);
+        $hibp = new Hibp($client, $request, $response);
         $hibp->isPwnedPassword('foo');
         $this->fail('Expected exception was not thrown');
     }
@@ -79,7 +87,7 @@ class HibpTest extends TestCase
         $passwordFile = 'hit_rate_limit.txt';
         $password = 'password';
         $hibp = $this->createHibpWithMockedClientResponse(__DIR__ . '/_files/' . $passwordFile);
-        $this->expectException(\DomainException::class);
+        $this->expectException(\RuntimeException::class);
         $hibp->isPwnedPassword($password);
         $this->fail('Expected exception for hit rate was not triggered');
     }
@@ -97,7 +105,7 @@ class HibpTest extends TestCase
         $passwordFile = 'not_found.txt';
         $password = 'password';
         $hibp = $this->createHibpWithMockedClientResponse(__DIR__ . '/_files/' . $passwordFile);
-        $this->expectException(\DomainException::class);
+        $this->expectException(\RuntimeException::class);
         $hibp->isPwnedPassword($password);
         $this->fail('Expected exception for hit rate was not triggered');
     }
@@ -146,9 +154,15 @@ class HibpTest extends TestCase
         $client = $this->getMockBuilder(ClientInterface::class)
             ->getMockForAbstractClass();
 
+        $request = $this->getMockBuilder(RequestInterface::class)
+            ->getMockForAbstractClass();
+
+        $response = $this->getMockBuilder(ResponseInterface::class)
+            ->getMockForAbstractClass();
+
         $password = 'foobar';
         $hash = sha1($password);
-        $range = $getHashRange->invokeArgs(new Hibp($client), [$hash]);
+        $range = $getHashRange->invokeArgs(new Hibp($client, $request, $response), [$hash]);
         $this->assertTrue(is_string($range));
         $this->assertSame(Hibp::HIBP_RANGE_LENGTH, strlen($range));
         $this->assertSame(
@@ -283,6 +297,21 @@ class HibpTest extends TestCase
         $sha1Password = sha1($strongPassword);
         $resultSet = $hibp->isPwnedPassword($sha1Password, true);
         $this->assertFalse($resultSet);
+    }
+
+    /**
+     * Testing that we cannot send a plain text password while we have set the
+     * hash flag to TRUE
+     *
+     * @covers \Dragonbe\Hibp\Hibp::isPwnedPassword()
+     */
+    public function testErrorIsThrownWhenPlainPasswordIsPassedWithHashFlagEnabled()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $hibp = HibpFactory::createTestClient([]);
+        $password = 'foo';
+        $hibp->isPwnedPassword($password, true);
+        $this->fail('Expected Exception Was Not thrown for providing a plain text password with hash flag on');
     }
 
     /**

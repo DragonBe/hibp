@@ -77,4 +77,4 @@ jobs:
 
       - run:
           name: Execute mutation testing
-          command: ./vendor/bin/infection --configuration=infection.json.dist --coverage=build/logs/coverage
+          command: ./vendor/bin/infection --configuration=infection.json.dist --coverage=build/logs/coverage --only-covered

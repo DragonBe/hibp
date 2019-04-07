@@ -3,9 +3,11 @@ declare(strict_types=1);
 
 namespace Dragonbe\Hibp;
 
-use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
+use RicardoFiorani\GuzzlePsr18Adapter\Client;
 
 class HibpFactory
 {
@@ -23,6 +25,26 @@ class HibpFactory
     }
 
     /**
+     * Factory method to create a basic configuration with the
+     * option to provide your own settings to override default
+     * configuration options.
+     *
+     * @param array $config
+     * @return array
+     */
+    public static function createConfig(array $config = []): array
+    {
+        return array_replace_recursive([
+            'base_uri' => Hibp::HIBP_API_URI,
+            'timeout' => Hibp::HIBP_API_TIMEOUT,
+            'headers' => [
+                'User-Agent' => Hibp::HIBP_CLIENT_UA,
+                'Accept' => Hibp::HIBP_CLIENT_ACCEPT,
+            ]
+        ], $config);
+    }
+
+    /**
      * Creates a real HTTP client for using in your applications
      * and make calls to the outside world.
      *
@@ -32,15 +54,17 @@ class HibpFactory
      */
     private static function createRealClient(array $config): Hibp
     {
-        $client = new Client(array_replace_recursive([
-            'base_uri' => Hibp::HIBP_API_URI,
-            'timeout' => Hibp::HIBP_API_TIMEOUT,
-            'headers' => [
+        $client = new Client(self::createConfig($config));
+        $request = new Request(
+            'GET',
+            Hibp::HIBP_API_URI,
+            [
                 'User-Agent' => Hibp::HIBP_CLIENT_UA,
                 'Accept' => Hibp::HIBP_CLIENT_ACCEPT,
             ]
-        ], $config));
-        return new Hibp($client);
+        );
+        $response = new Response();
+        return new Hibp($client, $request, $response);
     }
 
     /**
@@ -56,6 +80,11 @@ class HibpFactory
         $mock = new MockHandler($mockArray);
         $handler = HandlerStack::create($mock);
         $client = new Client(['handler' => $handler]);
-        return new Hibp($client);
+        $request = new Request(
+            'GET',
+            '/'
+        );
+        $response = new Response();
+        return new Hibp($client, $request, $response);
     }
 }
