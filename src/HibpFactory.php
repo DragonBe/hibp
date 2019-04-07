@@ -25,6 +25,26 @@ class HibpFactory
     }
 
     /**
+     * Factory method to create a basic configuration with the
+     * option to provide your own settings to override default
+     * configuration options.
+     *
+     * @param array $config
+     * @return array
+     */
+    public static function createConfig(array $config = []): array
+    {
+        return array_replace_recursive([
+            'base_uri' => Hibp::HIBP_API_URI,
+            'timeout' => Hibp::HIBP_API_TIMEOUT,
+            'headers' => [
+                'User-Agent' => Hibp::HIBP_CLIENT_UA,
+                'Accept' => Hibp::HIBP_CLIENT_ACCEPT,
+            ]
+        ], $config);
+    }
+
+    /**
      * Creates a real HTTP client for using in your applications
      * and make calls to the outside world.
      *
@@ -34,14 +54,7 @@ class HibpFactory
      */
     private static function createRealClient(array $config): Hibp
     {
-        $client = new Client(array_replace_recursive([
-            'base_uri' => Hibp::HIBP_API_URI,
-            'timeout' => Hibp::HIBP_API_TIMEOUT,
-            'headers' => [
-                'User-Agent' => Hibp::HIBP_CLIENT_UA,
-                'Accept' => Hibp::HIBP_CLIENT_ACCEPT,
-            ]
-        ], $config));
+        $client = new Client(self::createConfig($config));
         $request = new Request(
             'GET',
             Hibp::HIBP_API_URI,
@@ -69,11 +82,7 @@ class HibpFactory
         $client = new Client(['handler' => $handler]);
         $request = new Request(
             'GET',
-            Hibp::HIBP_API_URI,
-            [
-                'User-Agent' => Hibp::HIBP_CLIENT_UA,
-                'Accept' => Hibp::HIBP_CLIENT_ACCEPT,
-            ]
+            '/'
         );
         $response = new Response();
         return new Hibp($client, $request, $response);
