@@ -118,9 +118,9 @@ class HibpTest extends TestCase
     public function pwnedCommonPasswordProvider(): array
     {
         return [
-            ['password', 'pwned1_password.txt', 3303003],
-            ['querty', 'pwned2_password.txt', 962],
-            ['admin', 'pwned3_password.txt', 41812],
+            ['password', 'pwned1_password.txt', 3730471],
+            ['querty', 'pwned2_password.txt', 1080],
+            ['admin', 'pwned3_password.txt', 48060],
         ];
     }
 
