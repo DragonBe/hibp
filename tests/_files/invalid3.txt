@@ -1,0 +1,14 @@
+GET https://api.pwnedpasswords.com/range/GFEDC
+
+HTTP/2 400 
+date: Sun, 29 Sep 2019 16:52:39 GMT
+content-type: text/plain;charset=UTF-8
+content-length: 41
+set-cookie: __cfduid=d99aba78671a0183c71c00f44e5f7d4e01569775959; expires=Mon, 28-Sep-20 16:52:39 GMT; path=/; domain=.pwnedpasswords.com; HttpOnly; Secure
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+x-content-type-options: nosniff
+expect-ct: max-age=604800, report-uri="https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"
+server: cloudflare
+cf-ray: 51df7802fe2cd4b8-BRU
+
+The hash prefix was not valid hexadecimal

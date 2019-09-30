@@ -12,8 +12,9 @@ use Psr\Http\Message\ResponseInterface;
 class Hibp implements HibpInterface, \Countable
 {
     const HIBP_API_URI = 'https://api.pwnedpasswords.com';
+    const HIBP_API_VERSION = 3;
     const HIBP_API_TIMEOUT = 300;
-    const HIBP_CLIENT_UA = 'DragonBe\Hibp-0.0.1RC1 Composer\1.6.4 PHP\7.2';
+    const HIBP_CLIENT_UA = 'DragonBe\Hibp-0.0.1RC1 Composer\1.6.4 PHP\7.3';
     const HIBP_CLIENT_ACCEPT = 'application/vnd.haveibeenpwned.v2+json';
     const HIBP_RANGE_LENGTH = 5;
     const HIBP_RANGE_BASE = 0;
